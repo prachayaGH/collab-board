@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import LandingPage from './views/LandingPage.vue';
 </script>
 
 <template>
-  <main>
-    <div class="text-blue-700">HELLO WORLD!</div>
+  <main class="">
+    <LandingPage/>
   </main>
 </template>
 
