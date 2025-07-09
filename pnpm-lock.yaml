@@ -6,7 +6,7 @@ settings:
 
 importers:
 
-  .:
+  frontend:
     dependencies:
       '@primeuix/themes':
         specifier: ^1.1.2

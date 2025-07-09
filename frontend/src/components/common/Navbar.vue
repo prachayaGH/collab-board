@@ -9,6 +9,10 @@ function goToLogin() {
   router.push('/login');
 }
 
+function goToSingup() {
+  router.push('/singup');
+}
+
 const isMenuOpen = ref(false)
 </script>
 
@@ -31,7 +35,9 @@ const isMenuOpen = ref(false)
       <button
         @click="goToLogin"
         class="btn--primary h-10 w-23 rounded-[8px] cursor-pointer">Login</button>
-      <button class="btn--secondary h-10 w-23 rounded-[8px] cursor-pointer">Sign&nbsp;Up</button>
+      <button
+        @click="goToSingup"
+        class="btn--secondary h-10 w-23 rounded-[8px] cursor-pointer">Sign&nbsp;Up</button>
     </div>
     <!-- Hamburger Menu Button (Mobile only) -->
     <button class="md:hidden" @click="isMenuOpen = !isMenuOpen">
@@ -46,8 +52,12 @@ const isMenuOpen = ref(false)
         <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1] py-2">About</li>
       </ul>
       <div class="flex flex-col gap-2">
-        <button class="btn--primary h-10 rounded-[8px] cursor-pointer">Login</button>
-        <button class="btn--secondary h-10 rounded-[8px] cursor-pointer">SignUp</button>
+        <button
+          @click="goToLogin"
+          class="btn--primary h-10 rounded-[8px] cursor-pointer">Login</button>
+        <button
+          @click="goToSingup"
+          class="btn--secondary h-10 rounded-[8px] cursor-pointer">SignUp</button>
       </div>
     </div>
 </template>

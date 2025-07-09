@@ -68,11 +68,6 @@ const dashboardData = [
   }
 ]
 
-// const router = useRouter();
-
-// function goToLogin() {
-//   router.push('/login');
-// }
 </script>
 
 <template>

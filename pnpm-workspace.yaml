@@ -3,3 +3,8 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
+
+# pnpm-workspace.yaml
+packages:
+  - "frontend"
+  - "backend"
