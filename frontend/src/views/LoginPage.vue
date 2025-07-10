@@ -4,6 +4,7 @@ import Navbar from "@/components/common/Navbar.vue";
 import { LoginValidator, loginSchema, type LoginData, type ValidationErrors } from "@/schemas/loginSchema";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import { authService } from "@/utils/auth";
 
 const loginData = reactive<LoginData>({
   email: "",
@@ -81,6 +82,11 @@ const handleSubmit = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+const googleLogin = async () => {
+  authService.loginWithGoogle();
+  window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/login`;
 };
 
 const togglePassword = () => {
@@ -275,7 +281,10 @@ const handleInputBlur = (field: keyof LoginData) => {
 
           <!-- Social Login -->
           <div class="mt-6 text-center">
-            <button class="w-full border-1 py-3 rounded-[8px] border-gray-300 cursor-pointer">
+            <button
+              @click="googleLogin"
+              class="w-full border-1 py-3 rounded-[8px] border-gray-300 cursor-pointer"
+            >
               <div class="flex items-center justify-center">
                 <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
