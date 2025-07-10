@@ -2,6 +2,7 @@
 import Navbar from "@/components/common/Navbar.vue";
 import FeatureCards from "@/components/common/FeatureCards.vue";
 import Footer from "@/components/common/Footer.vue";
+// import { useRouter } from 'vue-router';
 
 const featureData = [
   {
@@ -66,10 +67,11 @@ const dashboardData = [
     title: "Countries"
   }
 ]
+
 </script>
 
 <template>
-  <div class="">
+  <div>
     <header class="md:px-25 px-10 border-2 border-gray-200 bg-white sticky top-0 z-50">
       <Navbar />
     </header>

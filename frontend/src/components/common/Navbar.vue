@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 defineOptions({ name: "AppNavbar" });
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+function goToLogin() {
+  router.push('/login');
+}
+
+function goToSingup() {
+  router.push('/singup');
+}
 
 const isMenuOpen = ref(false)
 </script>
@@ -21,8 +32,12 @@ const isMenuOpen = ref(false)
     </div>
     <!-- Desktop Buttons -->
     <div class="hidden md:flex flex-row gap-3">
-      <button class="btn--primary h-10 w-23 rounded-[8px] cursor-pointer">Login</button>
-      <button class="btn--secondary h-10 w-23 rounded-[8px] cursor-pointer">Sign&nbsp;Up</button>
+      <button
+        @click="goToLogin"
+        class="btn--primary h-10 w-23 rounded-[8px] cursor-pointer">Login</button>
+      <button
+        @click="goToSingup"
+        class="btn--secondary h-10 w-23 rounded-[8px] cursor-pointer">Sign&nbsp;Up</button>
     </div>
     <!-- Hamburger Menu Button (Mobile only) -->
     <button class="md:hidden" @click="isMenuOpen = !isMenuOpen">
@@ -30,15 +45,19 @@ const isMenuOpen = ref(false)
     </button>
   </nav>
   <!-- Mobile Dropdown Menu -->
-    <div v-if="isMenuOpen" class="mt-4 md:hidden absolute left-0 top-10 w-full bg-white shadow-lg px-10 pb-5 z-50 border-t-1 border-gray-200 flex flex-col gap-4">
-      <ul class="flex flex-col gap-3 my-3 text-center">
-        <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1]">Features</li>
-        <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1]">Pricing</li>
-        <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1]">About</li>
+    <div v-if="isMenuOpen" class="mt-4 md:hidden absolute left-0 top-10 w-full bg-white shadow-lg px-10 pb-5 z-50 border-t-1 border-gray-200 flex flex-col">
+      <ul class="flex flex-col my-3 text-center">
+        <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1] py-2">Features</li>
+        <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1] py-2">Pricing</li>
+        <li class="cursor-pointer hover:bg-gray-200 active:text-[#6366F1] py-2">About</li>
       </ul>
       <div class="flex flex-col gap-2">
-        <button class="btn--primary h-10 rounded-[8px] cursor-pointer">Login</button>
-        <button class="btn--secondary h-10 rounded-[8px] cursor-pointer">SignUp</button>
+        <button
+          @click="goToLogin"
+          class="btn--primary h-10 rounded-[8px] cursor-pointer">Login</button>
+        <button
+          @click="goToSingup"
+          class="btn--secondary h-10 rounded-[8px] cursor-pointer">SignUp</button>
       </div>
     </div>
 </template>

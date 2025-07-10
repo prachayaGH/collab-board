@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+
+.btn--primary {
+  @apply bg-[#6366F1] hover:bg-[#696CFF] active:bg-[#595CD9] text-white cursor-pointer
+}
+
+.btn--secondary {
+  @apply bg-[#1F2937] hover:bg-[#2D3B4F] active:bg-[#0E131A] text-white cursor-pointer
+}
+
+.heading-2 {
+  @apply text-[20px] text-gray-600
+}
+
+.purple-100 {
+  @apply text-[#595CD9]
+}
+
+.purple-200 {
+  @apply text-[#6366F1]
+}
+
+.purple-300 {
+  @apply text-[#696CFF]
+}
