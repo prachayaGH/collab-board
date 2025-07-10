@@ -62,10 +62,10 @@ const handleSubmit = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      withCredentials: true, // ✅ สำคัญมาก!
       data: {
         email: validatedData.email,
         password: validatedData.password,
-        withCredentials: true,
       },
     })
 

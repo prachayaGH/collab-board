@@ -180,7 +180,6 @@ async def refresh_token(refresh_request: RefreshTokenRequest, db: Session = Depe
 async def google_login(request: Request):
     nonce = generate_token()
     request.session[f"{oauth.google.name}_nonce"] = nonce
-    print("✅ SET NONCE IN SESSION:", nonce)
     redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri, nonce=nonce)
 
@@ -188,7 +187,6 @@ async def google_login(request: Request):
 async def google_callback(request: Request, db: Session = Depends(get_db)):
     try:
         token = await oauth.google.authorize_access_token(request)
-        print("✅ DEBUG token:", token)
 
         if not token:
             raise HTTPException(status_code=400, detail="Google authentication failed: Token not received.")
