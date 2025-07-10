@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from backend.app.schemas.user import UserCreate,UserOut
+from backend.app.schemas.user import UserCreate,UserOut,LoginRequest
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
-from backend.app.core.security import validate_password
+from backend.app.core.security import validate_password,verify_password
 from backend.app.services.auth_service import get_user_by_email, create_user,get_user_by_oauth_id, create_oauth_user
 from backend.app.models.user import User
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from authlib.integrations.starlette_client import OAuth
 from starlette.requests import Request
 from starlette.config import Config
@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from authlib.common.security import generate_token
 from backend.app.schemas.auth import TokenResponse, RefreshTokenRequest
 from backend.app.core.jwt_auth import create_access_token, create_refresh_token, verify_token, get_current_user
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -82,6 +83,46 @@ async def signup(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while creating user: {str(e)}"
         )
+    
+@router.post("/login", response_model=TokenResponse)
+async def login(user: LoginRequest, db: Session = Depends(get_db)):
+    user_data = get_user_by_email(db, user.email)
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+    if not verify_password(user.password, user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+    
+    access_token = create_access_token(
+        data={"sub": str(user_data.id), "email": user_data.email, "display_name": user_data.display_name}
+    )
+    refresh_token = create_refresh_token(data={"sub": str(user_data.id)})
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    response = JSONResponse(content={"message": "Login successful", "redirect_url": "/dashboard"})
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=1800,  # 30 minutes
+        secure=True if os.getenv("ENVIRONMENT") == "production" else False,
+        samesite="lax"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=604800,  # 7 days
+        secure=True if os.getenv("ENVIRONMENT") == "production" else False,
+        samesite="lax"
+    )
+
+    return response
     
 @router.get("/users/{user_id}", response_model=UserOut)
 async def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -183,17 +224,14 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
             ),
         )
 
-    # 🔐 สร้าง JWT tokens
     access_token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "display_name": user.display_name}
     )
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
-    # ✅ วิธีที่ 2: Redirect ไปหน้า success พร้อม set cookie (แนะนำ)
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
     response = RedirectResponse(url=f"{frontend_url}/dashboard")
 
-    # Set HTTP-only cookies (ปลอดภัยกว่า localStorage)
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -241,6 +279,7 @@ async def google_success(request: Request, db: Session = Depends(get_db)):
     )
 
 @router.post("/logout")
-async def logout():
-    """Logout endpoint (ใน production ควรเก็บ blacklist ของ tokens)"""
+async def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
     return {"message": "Logged out successfully"}

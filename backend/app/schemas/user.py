@@ -30,3 +30,7 @@ class OAuthUserCreate(BaseModel):
     avatar_url: Optional[str] = None
     oauth_provider: str
     oauth_id: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
