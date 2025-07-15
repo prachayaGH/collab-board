@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from backend.app.schemas.user import UserCreate,UserOut,LoginRequest
+from ..schemas.user import UserCreate, UserOut, LoginRequest
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
-from backend.app.core.security import validate_password,verify_password
-from backend.app.services.auth_service import get_user_by_email, create_user,get_user_by_oauth_id, create_oauth_user
-from backend.app.models.user import User
+from ..core.security import validate_password,verify_password
+from ..services.auth_service import get_user_by_email, create_user,get_user_by_oauth_id, create_oauth_user
+from ..models.user import User
 from fastapi.responses import RedirectResponse, Response
 from authlib.integrations.starlette_client import OAuth
 from starlette.requests import Request
@@ -12,8 +12,8 @@ from starlette.config import Config
 import os
 from dotenv import load_dotenv
 from authlib.common.security import generate_token
-from backend.app.schemas.auth import TokenResponse, RefreshTokenRequest
-from backend.app.core.jwt_auth import create_access_token, create_refresh_token, verify_token, get_current_user
+from ..schemas.auth import TokenResponse, RefreshTokenRequest
+from ..core.jwt_auth import create_access_token, create_refresh_token, verify_token, get_current_user
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
