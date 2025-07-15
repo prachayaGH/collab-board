@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 from dotenv import load_dotenv
@@ -57,16 +57,14 @@ def verify_token(token: str, token_type: str = "access"):
             detail="Invalid token"
         )
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """ดึงข้อมูล user จาก JWT token"""
-    token = credentials.credentials
+def get_current_user(request: Request):
+    token = request.cookies.get("access_token")  # หรือชื่อ cookie ของคุณ
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
     payload = verify_token(token, "access")
     user_id = payload.get("sub")
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+        raise HTTPException(status_code=401, detail="Invalid token")
     return {
         "id": user_id,
         "email": payload.get("email"),
