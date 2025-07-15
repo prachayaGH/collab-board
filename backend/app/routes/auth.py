@@ -111,7 +111,7 @@ async def login(user: LoginRequest, db: Session = Depends(get_db)):
         httponly=True,
         max_age=1800,  # 30 minutes
         secure=True if os.getenv("ENVIRONMENT") == "production" else False,
-        samesite="lax"
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
     response.set_cookie(
         key="refresh_token",
@@ -119,7 +119,7 @@ async def login(user: LoginRequest, db: Session = Depends(get_db)):
         httponly=True,
         max_age=604800,  # 7 days
         secure=True if os.getenv("ENVIRONMENT") == "production" else False,
-        samesite="lax"
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
 
     return response
@@ -236,7 +236,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         httponly=True,
         max_age=1800,  # 30 minutes
         secure=True if os.getenv("ENVIRONMENT") == "production" else False,
-        samesite="lax"
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
     response.set_cookie(
         key="refresh_token",
@@ -244,7 +244,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         httponly=True,
         max_age=604800,  # 7 days
         secure=True if os.getenv("ENVIRONMENT") == "production" else False,
-        samesite="lax"
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
     
     return response
