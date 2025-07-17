@@ -97,12 +97,15 @@ async def login(user: LoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    
+    user_id_str = str(user_data.id)
+
+    # ส่ง user_data.id เป็น int ไปยัง create_access_token
+    # ฟังก์ชัน create_access_token จะแปลงเป็น string เอง
     access_token = create_access_token(
-        data={"sub": str(user_data.id), "email": user_data.email, "display_name": user_data.display_name}
+        data={"sub": user_data.id, "email": user_data.email, "display_name": user_data.display_name}
     )
-    refresh_token = create_refresh_token(data={"sub": str(user_data.id)})
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    refresh_token = create_refresh_token(data={"sub": user_data.id})
+
     response = JSONResponse(content={"message": "Login successful", "redirect_url": "/dashboard"})
 
     response.set_cookie(
@@ -121,7 +124,6 @@ async def login(user: LoginRequest, db: Session = Depends(get_db)):
         secure=True if os.getenv("ENVIRONMENT") == "production" else False,
         samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
-
     return response
     
 @router.get("/users/{user_id}", response_model=UserOut)
@@ -147,10 +149,21 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user), 
     return user
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_request: RefreshTokenRequest, db: Session = Depends(get_db)):
+async def refresh_token(request: Request, db: Session = Depends(get_db)):
     """Refresh access token ด้วย refresh token"""
-    payload = verify_token(refresh_request.refresh_token, "refresh")
+    refresh_token = request.cookies.get("refresh_token")
+
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing refresh token")
+
+    payload = verify_token(refresh_token, "refresh")
     user_id = payload.get("sub")
+    
+    # แปลง user_id เป็น int เพราะ verify_token ส่งกลับมาเป็น string
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid user ID")
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -159,22 +172,40 @@ async def refresh_token(refresh_request: RefreshTokenRequest, db: Session = Depe
             detail="User not found"
         )
     
-    # สร้าง token ใหม่
+    # สร้าง token ใหม่ - ส่ง user.id เป็น int ไปยัง create_access_token
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email, "display_name": user.display_name}
+        data={"sub": user.id, "email": user.email, "display_name": user.display_name}
     )
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": user.id})
     
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user={
+    response = JSONResponse(content={
+        "message": "Token refreshed successfully",
+        "user": {
             "id": user.id,
             "email": user.email,
             "display_name": user.display_name,
             "avatar_url": user.avatar_url
         }
+    })
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=1800,  # 30 minutes
+        secure=True if os.getenv("ENVIRONMENT") == "production" else False,
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        max_age=604800,  # 7 days
+        secure=True if os.getenv("ENVIRONMENT") == "production" else False,
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
+    )
+    
+    return response
 
 @router.get("/auth/google/login")
 async def google_login(request: Request):
@@ -223,9 +254,9 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         )
 
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email, "display_name": user.display_name}
+        data={"sub": user.id, "email": user.email, "display_name": user.display_name}
     )
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": user.id})
 
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
     response = RedirectResponse(url=f"{frontend_url}/dashboard")
@@ -261,10 +292,10 @@ async def google_success(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email, "display_name": user.display_name}
+        data={"sub": user.id, "email": user.email, "display_name": user.display_name}
     )
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+    refresh_token = create_refresh_token(data={"sub": user.id})
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,

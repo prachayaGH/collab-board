@@ -25,7 +25,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://collabboard-frontend.onrender.com",
+        "https://collab-board-sabv.onrender.com",
     ],  
     allow_credentials=True,
     allow_methods=["*"],

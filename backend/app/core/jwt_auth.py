@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
-import jwt
+from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTError
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
@@ -25,6 +26,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire, "type": "access"})
+
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -33,38 +38,49 @@ def create_refresh_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
+
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    
     return encoded_jwt
 
 def verify_token(token: str, token_type: str = "access"):
     """ตรวจสอบ JWT token"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
         if payload.get("type") != token_type:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type"
             )
+
         return payload
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired"
         )
-    except jwt.JWTError:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
 
 def get_current_user(request: Request):
-    token = request.cookies.get("access_token")  # หรือชื่อ cookie ของคุณ
+    token = request.cookies.get("access_token") 
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
     payload = verify_token(token, "access")
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid user ID")
     return {
         "id": user_id,
         "email": payload.get("email"),

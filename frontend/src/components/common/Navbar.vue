@@ -49,7 +49,7 @@ async function fetchUserProfile() {
 
 async function refreshAccessToken(): Promise<boolean> {
   try {
-    const res = await axios.post(
+    await axios.post(
       `${import.meta.env.VITE_API_URL}/refresh`,
       {},
       { withCredentials: true }
