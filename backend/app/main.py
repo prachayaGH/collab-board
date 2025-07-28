@@ -3,8 +3,13 @@ from .database import engine, Base
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from .routes.auth import router as auth_router
+from .routes.friend import router as friend_router
+from .routes.chat import router as chat_router
+from .routes.notification import router as notifications_router
 import os
 from dotenv import load_dotenv
+from socketio import ASGIApp
+from .core.socketio import sio
 
 load_dotenv()
 
@@ -33,8 +38,14 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(friend_router)
+app.include_router(chat_router)
+app.include_router(notifications_router)
+
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to CollabBoard backend 🎯"}
+
+sio_app = ASGIApp(sio, other_asgi_app=app)
 

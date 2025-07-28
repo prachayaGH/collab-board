@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Create axios instance with interceptors
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // สำคัญ! ต้องมีเพื่อส่ง cookies
 });
@@ -19,17 +19,14 @@ api.interceptors.response.use(
 
       try {
         // เรียก refresh endpoint - cookies จะถูกส่งอัตโนมัติ
-        await axios.post(`${API_BASE_URL}/auth/refresh-cookie`, {}, {
+        await axios.post(`${API_BASE_URL}/refresh`, {}, {
           withCredentials: true
         });
 
         // Retry original request
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh token หมดอายุ - logout
-        logout();
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
+        return Promise.reject(refreshError)
       }
     }
 
@@ -40,7 +37,7 @@ api.interceptors.response.use(
 export const authService = {
   // ดึงข้อมูล user ปัจจุบัน
   getCurrentUser: async () => {
-    const response = await api.get('/auth/me');
+    const response = await api.get('/me');
     return response.data;
   },
 
@@ -52,34 +49,20 @@ export const authService = {
   // Logout
   logout: async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post('/logout');
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      // ลบข้อมูล user ใน localStorage (ถ้ามี)
-      localStorage.removeItem('user');
     }
   },
 
   // ตรวจสอบว่า login อยู่มั้ย (ต้องเรียก API)
   isAuthenticated: async () => {
     try {
-      await api.get('/auth/me');
+      await api.get('/me');
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
-  },
-
-  // ดึง user จาก localStorage (cache)
-  getUser: () => {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
   }
-};
-
-export const logout = () => {
-  localStorage.removeItem('user');
-};
-
-export default api;
+}
+export default api

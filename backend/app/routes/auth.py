@@ -15,15 +15,9 @@ from authlib.common.security import generate_token
 from ..schemas.auth import TokenResponse, RefreshTokenRequest
 from ..core.jwt_auth import create_access_token, create_refresh_token, verify_token, get_current_user
 from fastapi.responses import JSONResponse
+from ..database import get_db
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 load_dotenv()
 config = Config() 
@@ -308,7 +302,36 @@ async def google_success(request: Request, db: Session = Depends(get_db)):
     )
 
 @router.post("/logout")
-async def logout(response: Response):
-    response.delete_cookie(key="access_token")
-    response.delete_cookie(key="refresh_token")
+async def logout(request: Request, response: Response):
+    """Logout โดยการ set cookie ให้หมดอายุทันที"""
+    is_production = os.getenv("ENVIRONMENT") == "production"
+    request.session.clear()
+    # Set เป็น empty string และให้หมดอายุทันที
+    response.set_cookie(
+        key="access_token",
+        value="",
+        httponly=True,
+        max_age=0,
+        expires=0,
+        secure=is_production,
+        samesite="none" if is_production else "lax",
+        path="/"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value="",
+        httponly=True, 
+        max_age=0,
+        expires=0,
+        secure=is_production,
+        samesite="none" if is_production else "lax",
+        path="/"
+    )
+    # ลบ session cookie (ถ้ามี)
+    response.delete_cookie(
+        key="session",  # หรือชื่อที่ใช้สำหรับ session cookie
+        path="/",
+        secure=is_production,
+        samesite="none" if is_production else "lax"
+    )
     return {"message": "Logged out successfully"}
