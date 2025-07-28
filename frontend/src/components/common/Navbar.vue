@@ -1,66 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import axios from "axios";
+import { useAuthStore } from "@/stores/auth";
+
 defineOptions({ name: "AppNavbar" });
 
-interface UserProfile {
-  firstName: string;
-  lastName: string;
-  email: string;
-  avatarUrl: string | null;
-}
 
 const router = useRouter();
+const authStore = useAuthStore();
 const isMenuOpen = ref(false);
-const isLoggedIn = ref(false);
-const userProfile = ref<UserProfile | null>(null);
 const isDropdownOpen = ref(false);
+
+// ใช้ computed เพื่อ reactive กับ store
+const isLoggedIn = computed(() => !!authStore.user);
+const userProfile = computed(() => {
+  if (!authStore.user) return null;
+
+  const user = authStore.user as any; // Type assertion - ปรับตาม interface จริงของคุณ
+  return {
+    firstName: user.display_name?.split(" ")[0] || "",
+    lastName: user.display_name?.split(" ")[1] || "",
+    avatarUrl: user.avatar_url,
+    email: user.email,
+  };
+});
+
 
 function getInitials(firstName?: string, lastName?: string): string {
   return (firstName?.[0] || "") + (lastName?.[0] || "");
 }
-
-async function fetchUserProfile() {
-  try {
-    const res = await axios.get(`${import.meta.env.VITE_API_URL}/me`, { withCredentials: true });
-    const data = res.data;
-
-    userProfile.value = {
-      firstName: data.display_name?.split(" ")[0] || "",
-      lastName: data.display_name?.split(" ")[1] || "",
-      avatarUrl: data.avatar_url,
-      email: data.email,
-    };
-
-    isLoggedIn.value = true;
-
-  } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.status === 401) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        return fetchUserProfile();
-      }
-    }
-    isLoggedIn.value = false;
-    userProfile.value = null;
-  }
-}
-
-async function refreshAccessToken(): Promise<boolean> {
-  try {
-    await axios.post(
-      `${import.meta.env.VITE_API_URL}/refresh`,
-      {},
-      { withCredentials: true }
-    );
-    return true;
-  } catch (error) {
-    console.error("Refresh token failed", error);
-    return false;
-  }
-}
-
 
 function goToLogin() {
   router.push("/login");
@@ -70,19 +38,20 @@ function goToSignup() {
   router.push("/singup");
 }
 
-function logout() {
-  axios.post(`${import.meta.env.VITE_API_URL}/logout`, {}, { withCredentials: true }).then(() => {
-    isLoggedIn.value = false;
-    userProfile.value = null;
-    router.push("/");
-  });
+async function logout() {
+  await authStore.logout();
+  // ไม่ต้อง router.push("/") เพราะ store จะจัดการ redirect แล้ว
 }
 
 function goToEditProfile() {
   router.push("/account");
 }
 
-onMounted(fetchUserProfile);
+// เรียก fetchUser จาก store เมื่อ component mount
+onMounted(() => {
+  authStore.fetchUser();
+});
+
 </script>
 
 <template>
@@ -182,7 +151,7 @@ onMounted(fetchUserProfile);
   <!-- Mobile Dropdown -->
   <div
     v-if="!isLoggedIn && isMenuOpen"
-    class="mt-4 md:hidden absolute left-0 top-16 w-full bg-white shadow-lg px-10 pb-5 z-50 border-t-1 border-gray-200 flex flex-col"
+    class="mt-4 md:hidden absolute left-0 top-11 w-full bg-white shadow-lg px-10 pb-5 z-50 border-t-1 border-gray-200 flex flex-col"
   >
     <ul class="flex flex-col my-3 text-center">
       <li class="cursor-pointer hover:bg-gray-200 py-2">Features</li>
