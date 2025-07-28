@@ -3,7 +3,8 @@ import { ref, onMounted, watch } from "vue";
 import { useSocket } from "@/composables/useSocket";
 import { useApi } from "@/composables/useApi";
 import type { User, FriendRequest } from "@/types";
-import { debounce } from "lodash-es";
+import debounce from 'lodash/debounce';
+
 
 const emit = defineEmits<{
   "start-chat": [friend: User];

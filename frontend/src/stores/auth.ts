@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { authService } from '@/utils/auth'
 
 interface UserProfile {
+  id: number;
   firstName: string;
   lastName: string;
   email: string;

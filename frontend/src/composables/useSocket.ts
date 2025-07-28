@@ -1,10 +1,10 @@
-import { ref, reactive, onMounted, onUnmounted } from "vue";
-import { io, Socket } from "socket.io-client";
+import { ref, reactive } from "vue";
+import { io } from "socket.io-client";
 import { useAuthStore } from "@/stores/auth";
 import type { Conversation, FriendRequest, Message, User } from "@/types";
 
 export const useSocket = () => {
-  const socket = ref<Socket | null>(null);
+  const socket = ref<any>(null);
   const connected = ref(false);
   const authStore = useAuthStore();
 
@@ -189,7 +189,7 @@ export const useSocket = () => {
   };
 
   return {
-    socket: socket.value,
+    get socket() { return socket.value },
     connected,
     messages,
     friends,
