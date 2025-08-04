@@ -16,11 +16,12 @@ def get_db():
 load_dotenv()
 
 supabase_password = os.getenv("SUPABASE_PASSWORD")
+supabase_user = os.getenv("SUPABASE_USER", "postgres")  # default เป็น postgres
 
 if not supabase_password:
     raise ValueError("SUPABASE_PASSWORD environment variable is not set.")
 
-SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg://postgres:{supabase_password}@db.tsuchnnvmfnljhxddpgs.supabase.co:5432/postgres"
+SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{supabase_user}:{supabase_password}@db.tsuchnnvmfnljhxddpgs.supabase.co:5432/postgres"
 
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL) # สร้าง engine สำหรับเชื่อมต่อกับฐานข้อมูล
