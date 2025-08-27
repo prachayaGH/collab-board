@@ -7,8 +7,8 @@ def get_user_friends(db: Session, user_id: int) -> List[User]:
     """Get all friends of a user with their status"""
     friendships = db.query(Friendship).filter(
         or_(
-            and_(Friendship.requester_id == user_id, Friendship.status == FriendshipStatus.ACCEPTED),
-            and_(Friendship.addressee_id == user_id, Friendship.status == FriendshipStatus.ACCEPTED)
+            and_(Friendship.requester_id == user_id, Friendship.status == FriendshipStatus.accepted),
+            and_(Friendship.addressee_id == user_id, Friendship.status == FriendshipStatus.accepted)
         )
     ).all()
     

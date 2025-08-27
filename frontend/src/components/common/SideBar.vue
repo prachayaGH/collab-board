@@ -5,18 +5,23 @@ import { useApi } from "@/composables/useApi";
 import type { User, FriendRequest } from "@/types";
 import debounce from 'lodash/debounce';
 
+// const emit = defineEmits<{
+//   "start-chat": [friend: User];
+// }>();
 
-const emit = defineEmits<{
-  "start-chat": [friend: User];
-}>();
+// const {
+//   friends,
+//   pendingRequests,
+//   sendFriendRequest: socketSendFriendRequest,
+//   respondToFriendRequest,
+// } = useSocket();
 
 const {
-  friends,
-  pendingRequests,
-  sendFriendRequest: socketSendFriendRequest,
-  respondToFriendRequest,
-} = useSocket();
+  sendFriendRequest: sendFriendRequestApi,
+} = useApi();
+
 const api = useApi();
+const { conversations } = useSocket();
 
 const searchQuery = ref("");
 const searchResults = ref<User[]>([]);
@@ -44,12 +49,11 @@ const closeModal = () => {
 
 const sendFriendRequest = async (email: string) => {
   try {
-    socketSendFriendRequest(email);
-    searchResults.value = [];
-    searchQuery.value = "";
-
+    await sendFriendRequestApi(email)
+    searchResults.value = []
+    searchQuery.value = ""
   } catch (error) {
-    console.error("Friend request error:", error);
+    console.error("Friend request error:", error)
   }
 };
 
@@ -87,30 +91,24 @@ const sendFriendRequest = async (email: string) => {
         <div>
           <h4 class="text-[10px] font-bold text-gray-500 mb-3">DIRECT MESSAGES</h4>
           <!-- map ชื่อเพื่อน -->
-          <div class="flex items-center mb-2 gap-2 content-center p-2 button-ghost relative">
+          <div
+            v-for="conv in conversations"
+            :key="conv.friend.id"
+            class="flex items-center mb-2 gap-2 content-center p-2 button-ghost relative">
             <img
-              src="https://hips.hearstapps.com/hmg-prod/images/white-cat-breeds-kitten-in-grass-67bf648a54a3b.jpg?crop=0.668xw:1.00xh;0.167xw,0&resize=640:*"
-              alt="cat"
+              :src="conv.friend.avatar_url || '/default-avatar.png'"
+              :alt="conv.friend.display_name"
               class="w-6 h-6 rounded-full"
             />
             <!-- active รึเปล่า? -->
             <div
               class="bg-green-500 w-2 h-2 border-1 border-white rounded-full absolute bottom-1 left-6"
             ></div>
-            <p class="text-[14px]">John Smith</p>
-            <p class="bg-red-500 text-white text-[10px] w-4 h-4 text-center rounded-full">2</p>
-          </div>
-          <div class="flex items-center mb-2 gap-2 content-center p-2 button-ghost relative">
-            <img
-              src="https://hips.hearstapps.com/hmg-prod/images/white-cat-breeds-kitten-in-grass-67bf648a54a3b.jpg?crop=0.668xw:1.00xh;0.167xw,0&resize=640:*"
-              alt="cat"
-              class="w-6 h-6 rounded-full"
-            />
-            <!-- active รึเปล่า? -->
-            <div
-              class="bg-green-500 w-2 h-2 border-1 border-white rounded-full absolute bottom-1 left-6"
-            ></div>
-            <p class="text-[14px]">John Smith</p>
+            <p class="text-[14px]">{{ conv.friend.display_name }}</p>
+            <!-- Badge สำหรับ unread -->
+            <p
+            v-if="conv.unread_count > 0"
+            class="bg-red-500 text-white text-[10px] w-4 h-4 text-center rounded-full">{{ conv.unread_count }}</p>
           </div>
         </div>
       </div>

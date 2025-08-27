@@ -6,25 +6,23 @@ from ..core.jwt_auth import verify_token
 from ..models import User, UserStatus, UserStatusEnum as StatusEnum
 from ..crud import user_crud
 import asyncio
+from http import cookies
 
 sio = socketio.AsyncServer(
     async_mode="asgi", 
     cors_allowed_origins="*",
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
+    allow_credentials=True
 )
 
 # Store active connections
 active_connections: Dict[str, str] = {}  # socket_id -> user_id
 user_connections: Dict[str, Set[str]] = {}  # user_id -> set of socket_ids
 
-async def authenticate_socket(auth_data):
+async def authenticate_socket(token: str):
     """Authentication middleware for Socket.IO"""
     try:
-        token = auth_data.get('access_token')
-        if not token:
-            return None
-        
         payload = verify_token(token, "access")
         user_id = payload.get("sub")
         if user_id:
@@ -39,12 +37,24 @@ async def connect(sid, environ, auth):
     """Handle client connection"""
     print(f"[socket] trying to connect sid={sid}, auth={auth}, query={environ.get('QUERY_STRING')}")
 
-    token = auth.get("access_token") if auth else None
+    # --- อ่าน cookie จาก environ ---
+    cookie_header = environ.get("HTTP_COOKIE")
+    token = None
+
+    if cookie_header:
+        parsed_cookies = cookies.SimpleCookie(cookie_header)
+        print("Cookies:", parsed_cookies)
+        print(f"New connection: {sid}")
+
+        if "access_token" in parsed_cookies:
+            token = parsed_cookies["access_token"].value
+            print(f"Token found for sid={sid}: {token}")
 
     if not token:
+        print(f"No token in cookies for sid={sid}")
         return False
     
-    user_id = await authenticate_socket(auth)
+    user_id = await authenticate_socket(token)
     if not user_id:
         print(f"Authentication failed for {sid}")
         await sio.disconnect(sid)
@@ -60,7 +70,7 @@ async def connect(sid, environ, auth):
     # Update user status to online
     db = next(get_db())
     try:
-        await update_user_status(db, int(user_id), StatusEnum.ONLINE)
+        await update_user_status(db, int(user_id), StatusEnum.online)
     finally:
         db.close()
     
@@ -70,7 +80,7 @@ async def connect(sid, environ, auth):
     print(f"Client {sid} connected as user {user_id}")
     
     # Notify friends that user is online
-    await notify_friends_status_change(user_id, StatusEnum.ONLINE)
+    await notify_friends_status_change(user_id, StatusEnum.online)
 
 @sio.event
 async def disconnect(sid):
@@ -85,7 +95,7 @@ async def disconnect(sid):
         if not user_connections.get(user_id):
             db = next(get_db())
             try:
-                await update_user_status(db, int(user_id), StatusEnum.OFFLINE)
+                await update_user_status(db, int(user_id), StatusEnum.offline)
             finally:
                 db.close()
             
@@ -94,8 +104,8 @@ async def disconnect(sid):
                 del user_connections[user_id]
             
             # Notify friends that user is offline
-            await notify_friends_status_change(user_id, StatusEnum.OFFLINE)
-    
+            await notify_friends_status_change(user_id, StatusEnum.offline)
+
     print(f"Client {sid} disconnected")
 
 async def update_user_status(db: Session, user_id: int, status: StatusEnum):
@@ -129,87 +139,6 @@ async def notify_friends_status_change(user_id: str, status: StatusEnum):
     finally:
         db.close()
 
-@sio.event
-async def send_friend_request(sid, data):
-    """Handle sending friend request"""
-    user_id = active_connections.get(sid)
-    print(f"User {user_id} sending friend request")
-    if not user_id:
-        await sio.emit('error', {'message': 'Unauthorized'}, room=sid)
-        return
-    
-    target_email = data.get('email')
-    if not target_email:
-        await sio.emit('error', {'message': 'Email is required'}, room=sid)
-        return
-    
-    db = next(get_db())
-    try:
-        from ..crud import friend_crud
-        result = friend_crud.send_friend_request(db, int(user_id), target_email)
-        print(f"Friend request result: {result}")
-        
-        if result['success']:
-            # Notify target user if online
-            target_user_id = str(result['friendship'].addressee_id)
-            if target_user_id in user_connections:
-                await sio.emit('friend_request_received', {
-                    'id': result['friendship'].id,
-                    'requester': {
-                        'id': result['friendship'].requester.id,
-                        'display_name': result['friendship'].requester.display_name,
-                        'avatar_url': result['friendship'].requester.avatar_url,
-                        'email': result['friendship'].requester.email
-                    },
-                    'created_at': result['friendship'].created_at.isoformat()
-                }, room=f"user_{target_user_id}")
-            
-            await sio.emit('friend_request_sent', result, room=sid)
-        else:
-            await sio.emit('error', {'message': result['message']}, room=sid)
-    finally:
-        db.close()
-
-@sio.event
-async def respond_friend_request(sid, data):
-    """Handle responding to friend request"""
-    user_id = active_connections.get(sid)
-    if not user_id:
-        await sio.emit('error', {'message': 'Unauthorized'}, room=sid)
-        return
-    
-    request_id = data.get('request_id')
-    action = data.get('action')  # 'accept' or 'decline'
-    
-    if not request_id or action not in ['accept', 'decline']:
-        await sio.emit('error', {'message': 'Invalid request'}, room=sid)
-        return
-    
-    db = next(get_db())
-    try:
-        from ..crud import friend_crud
-        result = friend_crud.respond_to_friend_request(db, int(user_id), request_id, action)
-        
-        if result['success']:
-            # Notify requester if online
-            requester_id = str(result['friendship'].requester_id)
-            if requester_id in user_connections:
-                await sio.emit('friend_request_responded', {
-                    'id': result['friendship'].id,
-                    'action': action,
-                    'user': {
-                        'id': result['friendship'].addressee.id,
-                        'display_name': result['friendship'].addressee.display_name,
-                        'avatar_url': result['friendship'].addressee.avatar_url,
-                        'email': result['friendship'].addressee.email
-                    }
-                }, room=f"user_{requester_id}")
-            
-            await sio.emit('friend_request_updated', result, room=sid)
-        else:
-            await sio.emit('error', {'message': result['message']}, room=sid)
-    finally:
-        db.close()
 
 @sio.event
 async def join_chat(sid, data):
@@ -237,22 +166,26 @@ async def send_message(sid, data):
     if not user_id:
         await sio.emit('error', {'message': 'Unauthorized'}, room=sid)
         return
-    
-    receiver_id = data.get('receiver_id')
-    content = data.get('content')
-    
-    if not receiver_id or not content:
-        await sio.emit('error', {'message': 'Receiver ID and content are required'}, room=sid)
+
+    try:
+        receiver_id = int(data.get('receiver_id'))
+        content = data.get('content')
+    except (TypeError, ValueError):
+        await sio.emit('error', {'message': 'Invalid receiver ID'}, room=sid)
         return
-    
-    db = next(get_db())
+
+    if not content:
+        await sio.emit('error', {'message': 'Message content required'}, room=sid)
+        return
+
+    db_gen = get_db()
+    db = next(db_gen)
     try:
         from ..crud import message_crud
         message = message_crud.send_message(db, int(user_id), receiver_id, content)
-        
-        # Create room name
+
         room_name = f"chat_{min(int(user_id), receiver_id)}_{max(int(user_id), receiver_id)}"
-        
+
         message_data = {
             'id': message.id,
             'sender_id': message.sender_id,
@@ -266,20 +199,20 @@ async def send_message(sid, data):
                 'avatar_url': message.sender.avatar_url
             }
         }
-        
-        # Send to chat room
+
+        # ส่งให้ทั้งห้อง (sender + receiver)
         await sio.emit('message_received', message_data, room=room_name)
-        
-        # Send notification to receiver if not in chat room
-        receiver_id_str = str(receiver_id)
-        if receiver_id_str in user_connections:
+
+        # แจ้งเตือน receiver (ถ้าออนไลน์)
+        if str(receiver_id) in user_connections:
             await sio.emit('new_message_notification', {
                 'message': message_data,
                 'sender': message_data['sender']
-            }, room=f"user_{receiver_id_str}")
-    
+            }, room=f"user_{receiver_id}")
+
     finally:
-        db.close()
+        db_gen.close()
+
 
 async def mark_messages_read(sid, data):
     """Mark messages as read"""

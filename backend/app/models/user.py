@@ -19,8 +19,8 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 class UserStatusEnum(enum.Enum):
-    ONLINE = "online"
-    OFFLINE = "offline"
+    online = "online"
+    offline = "offline"
 
 class UserStatus(Base):
     __tablename__ = "user_status"
@@ -29,7 +29,7 @@ class UserStatus(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     status = Column(
         Enum(UserStatusEnum, name="user_status_enum"), 
-        default=UserStatusEnum.OFFLINE,
+        default=UserStatusEnum.offline,
         nullable=False
     )
     last_seen = Column(DateTime(timezone=True), server_default=func.now())

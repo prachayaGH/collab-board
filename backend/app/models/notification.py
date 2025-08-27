@@ -5,8 +5,8 @@ from ..database import Base
 import enum
 
 class NotificationType(enum.Enum):
-    FRIEND_REQUEST = "friend_request"
-    FRIEND_ACCEPTED = "friend_accepted"
+    friend_request = "friend_request"
+    friend_accepted = "friend_accepted"
 
 class Notification(Base):
     __tablename__ = "notifications"

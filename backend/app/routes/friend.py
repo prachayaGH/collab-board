@@ -45,6 +45,8 @@ async def get_pending_requests(
 ):
     """Get pending friend requests"""
     requests = friend_crud.get_pending_friend_requests(db, current_user["id"])
+    print(f"Pending requests: {requests}")
+    print(f"current user: {current_user}")
     return [
         {
             "id": req.id,
@@ -87,6 +89,7 @@ async def get_friends(
 ):
     """Get user's friends list"""
     friends = user_crud.get_user_friends(db, current_user["id"])
+    print(f"Friends list: {friends}")
     return [
         {
             "id": friend.id,
@@ -122,9 +125,9 @@ async def search_users(
         ).first()
 
         if friendship:
-            if friendship.status == FriendshipStatus.ACCEPTED:
+            if friendship.status == FriendshipStatus.accepted:
                 relationship = "friends"
-            elif friendship.status == FriendshipStatus.PENDING:
+            elif friendship.status == FriendshipStatus.pending:
                 if friendship.requester_id == current_user["id"]:
                     relationship = "requested"
                 else:

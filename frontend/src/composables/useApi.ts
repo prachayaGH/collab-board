@@ -1,40 +1,70 @@
 import api from '@/utils/auth'
 
-
 export const useApi = () => {
   // Friends API
   const getFriends = async () => {
-    const { data } = await api.get('/friends/')
-    return data
+    try {
+      const { data } = await api.get('/friends')
+      return data
+    } catch (error) {
+      console.error("Error fetching friends:", error)
+      throw error
+    }
   }
 
   const getPendingRequests = async () => {
-    const { data } = await api.get('/friends/requests/pending')
-    return data
+    try {
+      const { data } = await api.get('/friends/requests/pending')
+      return data
+    } catch (error) {
+      console.error("Error fetching pending requests:", error)
+      throw error
+    }
   }
 
   const getSentRequests = async () => {
-    const { data } = await api.get('/friends/requests/sent')
-    return data
+    try {
+      const { data } = await api.get('/friends/requests/sent')
+      return data
+    } catch (error) {
+      console.error("Error fetching sent requests:", error)
+      throw error
+    }
   }
 
   const searchUsers = async (query: string) => {
-    const { data } = await api.get(`/friends/search?q=${encodeURIComponent(query)}`)
-    return data
+    try {
+      const { data } = await api.get(`/friends/search?q=${encodeURIComponent(query)}`)
+      return data
+    } catch (error) {
+      console.error("Error searching users:", error)
+      throw error
+    }
   }
 
   const sendFriendRequest = async (email: string) => {
-    const { data } = await api.post('/friends/request', { email })
-    console.log(`Friend request sent to ${email}:`, data)
-    return data
+    try {
+      const { data } = await api.post('/friends/request', { email })
+      console.log(`Friend request sent to ${email}:`, data)
+      return data
+    } catch (error) {
+      console.error("Friend request error:", error)
+      throw error
+    }
   }
 
   const respondToFriendRequest = async (requestId: number, action: 'accept' | 'decline') => {
-    const { data } = await api.post('/friends/respond', {
-      request_id: requestId,
-      action
-    })
-    return data
+    try {
+      const { data } = await api.post('/friends/respond', {
+        request_id: requestId,
+        action
+      })
+      console.log(`Friend request ${action}:`, data)
+      return data
+    } catch (error) {
+      console.error("Respond to friend request error:", error)
+      throw error
+    }
   }
 
   // Chat API

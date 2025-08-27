@@ -111,7 +111,7 @@ const dashboardData = [
     <div class="bg-[#6366F1] w-full text-center text-white md:px-25 px-10 py-18">
       <h1 class="text-4xl font-bold">Ready to Start Collaborating?</h1>
       <p class="my-5 text-[18px]">Join thousands of teams already using CollabChat for their daily collaboration needs.</p>
-      <button class="mt-2 py-3 px-8 rounded-[8px] bg-white cursor-pointer text-[#6366F1] font-bold">Sing Up</button>
+      <button class="mt-2 py-3 px-8 rounded-[8px] bg-white cursor-pointer text-[#6366F1] font-bold">Sign Up</button>
       <!-- Animation -->
     </div>
     <Footer />

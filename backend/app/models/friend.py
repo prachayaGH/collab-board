@@ -5,9 +5,9 @@ from ..database import Base
 import enum
 
 class FriendshipStatus(enum.Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    DECLINED = "declined"
+    pending = "pending"
+    accepted = "accepted"
+    declined = "declined"
 
 class Friendship(Base):
     __tablename__ = "friendships"
@@ -17,7 +17,7 @@ class Friendship(Base):
     addressee_id = Column(Integer, ForeignKey("users.id"))
     status = Column(
         Enum(FriendshipStatus, name="friendship_status"),  # ใส่ชื่อ enum
-        default=FriendshipStatus.PENDING,
+        default=FriendshipStatus.pending,
         nullable=False
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())

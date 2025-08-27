@@ -48,4 +48,4 @@ def read_root():
     return {"message": "Welcome to CollabBoard backend 🎯"}
 
 sio_app = ASGIApp(sio, other_asgi_app=app)
-
+app = sio_app

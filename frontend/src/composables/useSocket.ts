@@ -1,12 +1,10 @@
 import { ref, reactive } from "vue";
 import { io } from "socket.io-client";
-import { useAuthStore } from "@/stores/auth";
 import type { Conversation, FriendRequest, Message, User } from "@/types";
+import { useAuthStore } from "@/stores/auth";
 
-export const useSocket = () => {
   const socket = ref<any>(null);
   const connected = ref(false);
-  const authStore = useAuthStore();
 
   const messages = reactive<Record<string, Message[]>>({});
   const friends = ref<User[]>([]);
@@ -14,62 +12,35 @@ export const useSocket = () => {
   const pendingRequests = ref<FriendRequest[]>([]);
   const sentRequests = ref<FriendRequest[]>([]);
 
+  let initialized = false;
+
+export const useSocket = () => {
+  const authStore = useAuthStore();
+
   const connect = () => {
-    const accessToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("access_token="))
-      ?.split("=")[1];
-
-    if (!accessToken) {
-      console.error("No access token found");
-      return;
-    }
-
-    console.log("Socket before emit:", socket.value);
+    if (initialized) return; // ป้องกัน connect ซ้ำ
+    initialized = true;
 
     socket.value = io(import.meta.env.VITE_API_URL || "http://localhost:8000", {
-      auth: {
-        access_token: accessToken,
-      },
-      transports: ["websocket"],
-    });
+    path: "/socket.io/",
+    transports: ["websocket"],
+    withCredentials: true
+  });
 
     // Connection events
     socket.value.on("connect", () => {
       connected.value = true;
-      console.log("Connected to server");
+      console.log("✅ Connected to server with id:", socket.value.id);
     });
 
     socket.value.on("disconnect", () => {
       connected.value = false;
-      console.log("Disconnected from server");
+      console.log("❌ Disconnected from server");
     });
 
     socket.value.on('error', (error: any) => {
       console.error('Socket error:', error)
     })
-
-    // Friend events
-    socket.value.on("friend_request_received", (data: any) => {
-      pendingRequests.value.push(data);
-      // Show notification
-      showNotification(
-        "New Friend Request",
-        `${data.requester.display_name} sent you a friend request`
-      );
-    });
-
-    socket.value.on("friend_request_responded", (data: any) => {
-      if (data.action === "accept") {
-        friends.value.push(data.user);
-        showNotification(
-          "Friend Request Accepted",
-          `${data.user.display_name} accepted your friend request`
-        );
-      }
-      // Remove from sent requests
-      sentRequests.value = sentRequests.value.filter((req) => req.id !== data.id);
-    });
 
     socket.value.on("friend_status_changed", (data: any) => {
       const friend = friends.value.find((f) => f.id === parseInt(data.user_id));
@@ -111,23 +82,7 @@ export const useSocket = () => {
       socket.value.disconnect();
       socket.value = null;
       connected.value = false;
-    }
-  };
-
-  // Friend methods
-  const sendFriendRequest = (email: string) => {
-    if (socket.value) {
-      socket.value.emit("send_friend_request", { email });
-    }
-    console.log(`Friend request sent to ${email}`);
-  };
-
-  const respondToFriendRequest = (requestId: number, action: "accept" | "decline") => {
-    if (socket.value) {
-      socket.value.emit("respond_friend_request", {
-        request_id: requestId,
-        action,
-      });
+      initialized = false;
     }
   };
 
@@ -151,6 +106,10 @@ export const useSocket = () => {
     if (socket.value) {
       socket.value.emit("mark_messages_read", { sender_id: senderId });
     }
+
+    // reset unread count
+    const conv = conversations.value.find((c) => c.friend.id === senderId);
+    if (conv) conv.unread_count = 0;
   };
 
   // Helper functions
@@ -169,18 +128,40 @@ export const useSocket = () => {
   const updateConversation = (message: Message) => {
     const friendId =
       message.sender_id === authStore.user?.id ? message.receiver_id : message.sender_id;
-    const convIndex = conversations.value.findIndex((conv) => conv.friend.id === friendId);
 
-    if (convIndex >= 0) {
-      conversations.value[convIndex].last_message = message;
-      if (message.sender_id !== authStore.user?.id && !message.is_read) {
-        conversations.value[convIndex].unread_count++;
-      }
-      // Move to top
-      const conv = conversations.value.splice(convIndex, 1)[0];
+    let conv = conversations.value.find((c) => c.friend.id === friendId);
+
+    if (!conv) {
+      // ถ้าไม่มี conversation ให้สร้างใหม่
+      conv = {
+        friend: { 
+          id: friendId, 
+          display_name: "Unknown", 
+          avatar_url: "", 
+          email: "", // placeholder email
+          relationship: "none" // default relationship
+        }, // placeholder
+        last_message: message,
+        unread_count: 0,
+      };
       conversations.value.unshift(conv);
+    } else {
+      conv.last_message = message;
+    }
+
+    // เพิ่ม unread ถ้าเพื่อนได้ส่งมา
+    if (message.sender_id !== authStore.user?.id && !message.is_read) {
+      conv.unread_count = (conv.unread_count || 0) + 1;
+    }
+
+    // เลื่อน conv ไปบนสุด
+    const idx = conversations.value.findIndex((c) => c.friend.id === friendId);
+    if (idx > 0) {
+      const [moved] = conversations.value.splice(idx, 1);
+      conversations.value.unshift(moved);
     }
   };
+
 
   const showNotification = (title: string, body: string) => {
     if ("Notification" in window && Notification.permission === "granted") {
@@ -198,8 +179,6 @@ export const useSocket = () => {
     sentRequests,
     connect,
     disconnect,
-    sendFriendRequest,
-    respondToFriendRequest,
     joinChat,
     sendMessage,
     markMessagesRead,

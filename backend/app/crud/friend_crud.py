@@ -1,3 +1,4 @@
+from fastapi import requests
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from app.models.friend import Friendship, FriendshipStatus
@@ -25,23 +26,23 @@ def send_friend_request(db: Session, requester_id: int, target_email: str) -> Di
     ).first()
     
     if existing_friendship:
-        if existing_friendship.status == FriendshipStatus.PENDING:
+        if existing_friendship.status == FriendshipStatus.pending:
             return {"success": False, "message": "Friend request already sent"}
-        elif existing_friendship.status == FriendshipStatus.ACCEPTED:
+        elif existing_friendship.status == FriendshipStatus.accepted:
             return {"success": False, "message": "Already friends"}
     
     # Create friendship request
     friendship = Friendship(
         requester_id=requester_id,
         addressee_id=target_user.id,
-        status=FriendshipStatus.PENDING
+        status=FriendshipStatus.pending
     )
     db.add(friendship)
     
     # Create notification
     notification = Notification(
         user_id=target_user.id,
-        type=NotificationType.FRIEND_REQUEST,
+        type=NotificationType.friend_request,
         title="New Friend Request",
         content=f"You have a new friend request",
         related_user_id=requester_id
@@ -62,19 +63,19 @@ def respond_to_friend_request(db: Session, user_id: int, request_id: int, action
     friendship = db.query(Friendship).filter(
         Friendship.id == request_id,
         Friendship.addressee_id == user_id,
-        Friendship.status == FriendshipStatus.PENDING
+        Friendship.status == FriendshipStatus.pending
     ).first()
     
     if not friendship:
         return {"success": False, "message": "Friend request not found"}
     
     if action == "accept":
-        friendship.status = FriendshipStatus.ACCEPTED
-        
+        friendship.status = FriendshipStatus.accepted
+
         # Create notification for requester
         notification = Notification(
             user_id=friendship.requester_id,
-            type=NotificationType.FRIEND_ACCEPTED,
+            type=NotificationType.friend_accepted,
             title="Friend Request Accepted",
             content=f"Your friend request has been accepted",
             related_user_id=user_id
@@ -82,8 +83,8 @@ def respond_to_friend_request(db: Session, user_id: int, request_id: int, action
         db.add(notification)
         
     elif action == "decline":
-        friendship.status = FriendshipStatus.DECLINED
-    
+        friendship.status = FriendshipStatus.declined
+
     db.commit()
     db.refresh(friendship)
     
@@ -97,22 +98,23 @@ def get_pending_friend_requests(db: Session, user_id: int) -> List[Friendship]:
     """Get pending friend requests for a user"""
     return db.query(Friendship).filter(
         Friendship.addressee_id == user_id,
-        Friendship.status == FriendshipStatus.PENDING
+        Friendship.status == "pending"
+        
     ).all()
 
 def get_sent_friend_requests(db: Session, user_id: int) -> List[Friendship]:
     """Get sent friend requests by a user"""
     return db.query(Friendship).filter(
         Friendship.requester_id == user_id,
-        Friendship.status == FriendshipStatus.PENDING
+        Friendship.status == FriendshipStatus.pending
     ).all()
 
 def get_user_friends(db: Session, user_id: int) -> List[User]:
     """Get all friends of a user"""
     friendships = db.query(Friendship).filter(
         or_(
-            and_(Friendship.requester_id == user_id, Friendship.status == FriendshipStatus.ACCEPTED),
-            and_(Friendship.addressee_id == user_id, Friendship.status == FriendshipStatus.ACCEPTED)
+            and_(Friendship.requester_id == user_id, Friendship.status == FriendshipStatus.accepted),
+            and_(Friendship.addressee_id == user_id, Friendship.status == FriendshipStatus.accepted)
         )
     ).all()
     
